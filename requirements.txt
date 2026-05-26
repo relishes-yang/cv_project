@@ -1,8 +1,16 @@
 # 清华源（加速）
--i https://pypi.tuna.tsinghua.edu.cn/simple
+#-i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 仅保留核心依赖（无任何会卡死的编译包）
+#streamlit
+#ultralytics
+#Pillow
+#numpy
+
+
+
+-i https://pypi.tuna.tsinghua.edu.cn/simple
 streamlit
-ultralytics
+ultralytics>=8.4.54
 Pillow
 numpy
