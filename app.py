@@ -16,14 +16,7 @@ except ImportError:
     st.error("ultralytics 库未安装，请检查 requirements.txt 文件")
     ULTRALYTICS_AVAILABLE = False
 
-# matplotlib
-try:
-    import matplotlib.pyplot as plt
 
-    MATPLOTLIB_AVAILABLE = True
-except ImportError:
-    st.error("matplotlib 库未安装，请检查 requirements.txt 文件")
-    MATPLOTLIB_AVAILABLE = False
 
 # numpy
 try:
