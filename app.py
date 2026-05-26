@@ -3,8 +3,11 @@ import os
 import io
 import zipfile
 from PIL import Image
+import glob
+import tempfile
 
-# 先处理ultralytics导入异常，避免部署时直接报错
+# -------------------------- 导入异常处理（所有第三方库） --------------------------
+# ultralytics
 try:
     from ultralytics import YOLO
 
@@ -12,10 +15,24 @@ try:
 except ImportError:
     st.error("ultralytics 库未安装，请检查 requirements.txt 文件")
     ULTRALYTICS_AVAILABLE = False
-import glob
-import tempfile
-import matplotlib.pyplot as plt
-import numpy as np
+
+# matplotlib
+try:
+    import matplotlib.pyplot as plt
+
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    st.error("matplotlib 库未安装，请检查 requirements.txt 文件")
+    MATPLOTLIB_AVAILABLE = False
+
+# numpy
+try:
+    import numpy as np
+
+    NUMPY_AVAILABLE = True
+except ImportError:
+    st.error("numpy 库未安装，请检查 requirements.txt 文件")
+    NUMPY_AVAILABLE = False
 
 # ======================== 页面全局配置 ========================
 st.set_page_config(
@@ -155,14 +172,13 @@ with tabs[0]:
         st.markdown("支持用户上传图片/批量检测，自动识别缺陷、标注位置、输出结果，一键下载报告。")
         st.markdown('</div>', unsafe_allow_html=True)
 
-# -------------------------- 2. 训练结果可视化（含图片说明） --------------------------
+# -------------------------- 2. 训练结果可视化（兼容部署环境） --------------------------
 with tabs[1]:
     with st.container():
         st.markdown('<div class="card">', unsafe_allow_html=True)
         st.header("📊 模型训练结果展示")
         result_dir = "runs/5.25add_data/"
 
-        # 处理Streamlit Cloud可能不存在的路径，避免崩溃
         if os.path.exists(result_dir):
             col1, col2 = st.columns(2)
             with col1:
@@ -340,13 +356,13 @@ with tabs[2]:
 
                         # 结果统计
                         st.success(f"✅ 批量检测完成！共检测 {len(files)} 张图片，识别到 {total_defects} 个目标")
-                        st.markdown("""
+                        st.markdown(f"""
                         <div class="result-card">
                         <strong style="color:#00d9ff;">批量检测统计：</strong>
                         <ul>
                             <li>检测图片总数：{len(files)} 张</li>
                             <li>识别目标总数：{total_defects} 个</li>
-                            <li>平均每张图片目标数：{total_defects/len(files):.2f} 个</li>
+                            <li>平均每张图片目标数：{total_defects / len(files):.2f} 个</li>
                         </ul>
                         </div>
                         """, unsafe_allow_html=True)
