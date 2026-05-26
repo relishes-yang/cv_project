@@ -1,8 +1,7 @@
 -i https://pypi.tuna.tsinghua.edu.cn/simple
 streamlit==1.32.2
 ultralytics==8.3.0
-opencv-python-headless==4.8.1.78  # 重点！无头环境专用，避免GUI依赖错误
+# 无头版OpenCV，不需要libgl，完美适配云服务器
+opencv-python-headless==4.8.1.78
 Pillow==10.1.0
 numpy==1.26.3
-torch==2.1.0
-torchvision==0.16.0
