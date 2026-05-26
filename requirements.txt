@@ -1,0 +1,10 @@
+# 核心框架
+streamlit>=1.30.0
+
+# 图像处理与AI模型
+ultralytics>=8.0.200
+Pillow>=9.0.0
+
+# 数据可视化与数值计算
+numpy>=1.21.0
+matplotlib>=3.5.0
