@@ -1,5 +1,13 @@
+# 指定国内源（解决国外源下载超时问题）
+-i https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 核心框架
 streamlit==1.31.0
-ultralytics==8.0.200
-Pillow==10.1.0
+
+# 图像处理与AI模型（ultralytics 稳定版）
+ultralytics==8.3.40
+Pillow==10.2.0
+
+# 数据可视化与数值计算
 numpy==1.26.3
 matplotlib==3.8.2
