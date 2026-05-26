@@ -1,0 +1,55 @@
+
+# 服务器上你的项目根目录（绝对路径，避免相对路径出错）
+path: /data/coding/cv_project
+
+# 训练/验证集图片路径（相对path的路径，和你服务器上的目录对应）
+train: images/train2017
+val: images/val2017
+
+# 关键！你的数据集实际有16个类别，不是80！
+nc: 16
+
+# 必须按转换后的ID顺序填写（JSON的ID 1-16 → YOLO的0-15）
+names:
+  0: jyz_qs   
+  1: bjdsyc
+  2: bj_wkps
+  3: yw_nc
+  4: xmbhyc
+  5: gbps
+  6: yw_gkxfw
+  7: hxq_gjbs
+  8: bj_bpmh
+  9: jyz_pl 
+  10: bj_bpps
+  11: sly_dmyw
+  12: wcaqm
+  13: wcgz
+  14: hxq_gjtps
+  15: xy
+
+#1 jyz_qs    绝缘子缺失
+#2 jyz pl   绝缘子破裂
+#3 yw_nc    鸟巢
+#4 yw_glxfw  挂空悬浮物
+#5 bj_dsyc   表计读数异常
+#6 bj_bpmh  表计表盘模糊
+#7 bj_bpps  表计表盘破损
+#8 bj_wkps  表计外壳破损
+#9 sly_xmbhyc 箱门闭合异常。
+#10 sly_gbps  盖板破损或缺失
+#11 sly_dmyw  地面油污
+#12 hxq_gjbs  呼吸器硅胶变色
+#13 hxq_gjtps 呼吸器硅胶体破损
+#14wc_aqm     未戴安全帽
+#15wc_gz      未穿工装
+#16wc_xy      吸烟
+
+
+
+
+
+
+
+
+
