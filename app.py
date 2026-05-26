@@ -5,16 +5,17 @@ import zipfile
 from PIL import Image
 import glob
 import tempfile
+from ultralytics import YOLO
 
 # -------------------------- 导入异常处理（所有第三方库） --------------------------
 # ultralytics
-try:
-    from ultralytics import YOLO
+#try:
+#    from ultralytics import YOLO
 
-    ULTRALYTICS_AVAILABLE = True
-except ImportError:
-    st.error("ultralytics 库未安装，请检查 requirements.txt 文件")
-    ULTRALYTICS_AVAILABLE = False
+#    ULTRALYTICS_AVAILABLE = True
+#except ImportError:
+#    st.error("ultralytics 库未安装，请检查 requirements.txt 文件")
+#    ULTRALYTICS_AVAILABLE = False
 
 
 
