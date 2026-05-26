@@ -3,9 +3,19 @@ import os
 import io
 import zipfile
 from PIL import Image
-from ultralytics import YOLO
+
+# 先处理ultralytics导入异常，避免部署时直接报错
+try:
+    from ultralytics import YOLO
+
+    ULTRALYTICS_AVAILABLE = True
+except ImportError:
+    st.error("ultralytics 库未安装，请检查 requirements.txt 文件")
+    ULTRALYTICS_AVAILABLE = False
 import glob
 import tempfile
+import matplotlib.pyplot as plt
+import numpy as np
 
 # ======================== 页面全局配置 ========================
 st.set_page_config(
@@ -15,7 +25,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ======================== 彩色科技风CSS（字体清晰+无冲突） ========================
+# ======================== 彩色科技风CSS ========================
 st.markdown("""
 <style>
     /* 全局背景 */
@@ -152,6 +162,7 @@ with tabs[1]:
         st.header("📊 模型训练结果展示")
         result_dir = "runs/5.25add_data/"
 
+        # 处理Streamlit Cloud可能不存在的路径，避免崩溃
         if os.path.exists(result_dir):
             col1, col2 = st.columns(2)
             with col1:
@@ -170,9 +181,9 @@ with tabs[1]:
                     """, unsafe_allow_html=True)
 
                 # 混淆矩阵 + 说明
-                if os.path.exists(f"{result_dir}confusion_matrix.png"):
+                if os.path.exists(f"{result_dir}confusion_matrix_normalized.png"):
                     st.subheader("混淆矩阵")
-                    st.image(Image.open(f"{result_dir}confusion_matrix.png"), use_column_width=True)
+                    st.image(Image.open(f"{result_dir}confusion_matrix_normalized.png"), use_column_width=True)
                     st.markdown("""
                     <div class="desc-box">
                     <strong style="color:#00d9ff;">说明：</strong> 混淆矩阵直观反映了模型对16类缺陷的分类性能：
@@ -188,7 +199,7 @@ with tabs[1]:
                 val_imgs = glob.glob(f"{result_dir}val*.jpg") + glob.glob(f"{result_dir}val*.png")
                 if val_imgs:
                     st.subheader("验证集效果")
-                    st.image(Image.open(val_imgs[0]), use_column_width=True)
+                    st.image(Image.open(val_imgs[3]), use_column_width=True)
                     st.markdown("""
                     <div class="desc-box">
                     <strong style="color:#00d9ff;">说明：</strong> 该图为模型在验证集上的实际检测效果示例：
@@ -213,10 +224,11 @@ with tabs[1]:
                     </div>
                     """, unsafe_allow_html=True)
         else:
-            st.error(f"路径错误：请确认文件夹 {result_dir} 存在")
+            st.warning(
+                "训练结果文件未上传，此模块暂无法展示。如需查看训练结果，请将 `runs/5.25add_data/` 文件夹上传至项目根目录。")
         st.markdown('</div>', unsafe_allow_html=True)
 
-# -------------------------- 3. 在线缺陷检测（内容扩充到极致） --------------------------
+# -------------------------- 3. 在线缺陷检测（兼容部署环境） --------------------------
 with tabs[2]:
     with st.container():
         st.markdown('<div class="card">', unsafe_allow_html=True)
@@ -242,16 +254,7 @@ with tabs[2]:
 - **其他类**：`xy`（其他小目标缺陷）
 """)
 
-        st.subheader("三、模型检测原理说明")
-        st.markdown("""
-本平台使用的YOLO11n模型，针对变电站缺陷检测场景进行了专项优化：
-1.  **输入处理**：将用户上传的图片调整为模型输入尺寸，进行归一化与标准化处理
-2.  **特征提取**：通过轻量级骨干网络提取缺陷特征，针对小目标缺陷优化了特征层
-3.  **目标检测**：输出缺陷边界框、类别与置信度，采用非极大值抑制去除重复检测框
-4.  **结果渲染**：在原图上绘制缺陷标注框与类别标签，生成可视化检测结果
-""")
-
-        st.subheader("四、使用说明与注意事项")
+        st.subheader("三、使用说明与注意事项")
         st.markdown("""
 ### 单张图片检测
 1.  点击「上传单张图片」按钮，选择本地图片（支持JPG/PNG/JPEG格式，单张大小≤10MB）
@@ -266,101 +269,105 @@ with tabs[2]:
 ### 注意事项
 - 图片清晰度越高、缺陷越明显，检测准确率越高
 - 避免上传过度曝光、严重遮挡、模糊不清的图片
-- 批量检测时图片数量较多可能会有短暂等待，请耐心等待处理完成
 """)
 
+        # 模型加载逻辑（兼容部署环境）
+        if ULTRALYTICS_AVAILABLE:
+            @st.cache_resource
+            def load_model():
+                model_path = "runs/5.25add_data/weights/best.pt"
+                if os.path.exists(model_path):
+                    return YOLO(model_path)
+                else:
+                    # 部署环境中如果没有训练好的模型，加载官方预训练模型（通用检测，不是电力缺陷专用）
+                    st.warning("训练好的模型文件未找到，将加载YOLO11n预训练模型，无法识别电力缺陷类别")
+                    return YOLO("yolo11n.pt")
 
-        # 加载模型（正确路径）
-        @st.cache_resource
-        def load_model():
-            model_path = "runs/5.25add_data/weights/best.pt"
-            if os.path.exists(model_path):
-                return YOLO(model_path)
-            return YOLO("yolo11n.pt")
 
+            model = load_model()
+            detect_tabs = st.tabs(["🖼️ 单张图片检测", "📂 批量图片检测"])
 
-        model = load_model()
-        detect_tabs = st.tabs(["🖼️ 单张图片检测", "📂 批量图片检测"])
+            # 单张检测
+            with detect_tabs[0]:
+                st.subheader("单张图片检测")
+                uploaded_file = st.file_uploader("上传单张图片", type=["jpg", "png", "jpeg"])
+                if uploaded_file:
+                    img = Image.open(uploaded_file)
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown('<div class="result-card"><strong>原图</strong></div>', unsafe_allow_html=True)
+                        st.image(img, use_column_width=True)
+                    with col2:
+                        st.markdown('<div class="result-card"><strong>检测结果</strong></div>', unsafe_allow_html=True)
+                        with st.spinner("检测中..."):
+                            res = model(img)
+                            st.image(res[0].plot(), use_column_width=True)
+                        # 缺陷统计
+                        boxes = res[0].boxes
+                        if len(boxes) > 0:
+                            st.success(f"✅ 检测完成，共识别出 {len(boxes)} 个目标")
+                            st.markdown("""
+                            <div class="desc-box">
+                            <strong style="color:#00d9ff;">目标详情：</strong>
+                            """, unsafe_allow_html=True)
+                            for i, box in enumerate(boxes):
+                                cls_name = res[0].names[int(box.cls)]
+                                conf = float(box.conf)
+                                st.markdown(f"- 目标{i + 1}：类别`{cls_name}`，置信度`{conf:.2f}`")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        else:
+                            st.info("✅ 检测完成，未识别到目标")
 
-        # 单张检测
-        with detect_tabs[0]:
-            st.subheader("单张图片检测")
-            uploaded_file = st.file_uploader("上传单张图片", type=["jpg", "png", "jpeg"])
-            if uploaded_file:
-                img = Image.open(uploaded_file)
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.markdown('<div class="result-card"><strong>原图</strong></div>', unsafe_allow_html=True)
-                    st.image(img, use_column_width=True)
-                with col2:
-                    st.markdown('<div class="result-card"><strong>检测结果</strong></div>', unsafe_allow_html=True)
-                    with st.spinner("检测中..."):
-                        res = model(img)
-                        st.image(res[0].plot(), use_column_width=True)
-                    # 缺陷统计
-                    boxes = res[0].boxes
-                    if len(boxes) > 0:
-                        st.success(f"✅ 检测完成，共识别出 {len(boxes)} 个缺陷目标")
+            # 批量检测
+            with detect_tabs[1]:
+                st.subheader("批量图片检测")
+                files = st.file_uploader("批量上传图片", accept_multiple_files=True, type=["jpg", "png", "jpeg"])
+                if files:
+                    with tempfile.TemporaryDirectory() as tmp:
+                        results = []
+                        total_defects = 0
+                        st.info(f"已上传 {len(files)} 张图片，正在处理...")
+                        progress_bar = st.progress(0)
+                        for i, f in enumerate(files):
+                            img = Image.open(f)
+                            res = model(img)
+                            out = res[0].plot()
+                            save_path = os.path.join(tmp, f.name)
+                            Image.fromarray(out).save(save_path)
+                            results.append((f.name, save_path, len(res[0].boxes)))
+                            total_defects += len(res[0].boxes)
+                            progress_bar.progress((i + 1) / len(files))
+
+                        # 结果统计
+                        st.success(f"✅ 批量检测完成！共检测 {len(files)} 张图片，识别到 {total_defects} 个目标")
                         st.markdown("""
-                        <div class="desc-box">
-                        <strong style="color:#00d9ff;">缺陷详情：</strong>
+                        <div class="result-card">
+                        <strong style="color:#00d9ff;">批量检测统计：</strong>
+                        <ul>
+                            <li>检测图片总数：{len(files)} 张</li>
+                            <li>识别目标总数：{total_defects} 个</li>
+                            <li>平均每张图片目标数：{total_defects/len(files):.2f} 个</li>
+                        </ul>
+                        </div>
                         """, unsafe_allow_html=True)
-                        for i, box in enumerate(boxes):
-                            cls_name = res[0].names[int(box.cls)]
-                            conf = float(box.conf)
-                            st.markdown(f"- 缺陷{i + 1}：类别`{cls_name}`，置信度`{conf:.2f}`")
-                        st.markdown("</div>", unsafe_allow_html=True)
-                    else:
-                        st.info("✅ 检测完成，未识别到缺陷目标")
 
-        # 批量检测
-        with detect_tabs[1]:
-            st.subheader("批量图片检测")
-            files = st.file_uploader("批量上传图片", accept_multiple_files=True, type=["jpg", "png", "jpeg"])
-            if files:
-                with tempfile.TemporaryDirectory() as tmp:
-                    results = []
-                    total_defects = 0
-                    st.info(f"已上传 {len(files)} 张图片，正在处理...")
-                    progress_bar = st.progress(0)
-                    for i, f in enumerate(files):
-                        img = Image.open(f)
-                        res = model(img)
-                        out = res[0].plot()
-                        save_path = os.path.join(tmp, f.name)
-                        Image.fromarray(out).save(save_path)
-                        results.append((f.name, save_path, len(res[0].boxes)))
-                        total_defects += len(res[0].boxes)
-                        progress_bar.progress((i + 1) / len(files))
+                        # 预览
+                        st.subheader("检测结果预览")
+                        cols = st.columns(3)
+                        for i, (name, path, cnt) in enumerate(results):
+                            with cols[i % 3]:
+                                st.image(path, caption=f"{name} | 目标数：{cnt}", use_column_width=True)
 
-                    # 结果统计
-                    st.success(f"✅ 批量检测完成！共检测 {len(files)} 张图片，识别到 {total_defects} 个缺陷目标")
-                    st.markdown("""
-                    <div class="result-card">
-                    <strong style="color:#00d9ff;">批量检测统计：</strong>
-                    <ul>
-                        <li>检测图片总数：{len(files)} 张</li>
-                        <li>识别缺陷总数：{total_defects} 个</li>
-                        <li>平均每张图片缺陷数：{total_defects/len(files):.2f} 个</li>
-                    </ul>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                    # 预览
-                    st.subheader("检测结果预览")
-                    cols = st.columns(3)
-                    for i, (name, path, cnt) in enumerate(results):
-                        with cols[i % 3]:
-                            st.image(path, caption=f"{name} | 缺陷数：{cnt}", use_column_width=True)
-
-                    # 打包下载
-                    zip_buf = io.BytesIO()
-                    with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as z:
-                        for name, path, _ in results:
-                            z.write(path, arcname=f"detected_{name}")
-                    zip_buf.seek(0)
-                    st.download_button("📥 下载全部检测结果（ZIP包）", zip_buf, "变电站缺陷检测结果.zip",
-                                       help="包含所有图片的检测结果")
+                        # 打包下载
+                        zip_buf = io.BytesIO()
+                        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as z:
+                            for name, path, _ in results:
+                                z.write(path, arcname=f"detected_{name}")
+                        zip_buf.seek(0)
+                        st.download_button("📥 下载全部检测结果（ZIP包）", zip_buf, "变电站缺陷检测结果.zip",
+                                           help="包含所有图片的检测结果")
+        else:
+            st.error("ultralytics 库未安装，检测功能暂不可用，请检查 requirements.txt 文件")
         st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------------- 4. 数据集样例（内容扩充到极致+样本量修正） --------------------------
