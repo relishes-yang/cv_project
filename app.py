@@ -5,8 +5,6 @@ import zipfile
 from PIL import Image
 import glob
 import tempfile
-# 【关键！】先强制初始化变量，避免后面找不到
-ULTRALYTICS_AVAILABLE = False
 
 # -------------------------- 导入异常处理（所有第三方库） --------------------------
 # ultralytics
@@ -18,7 +16,14 @@ except ImportError:
     st.error("ultralytics 库未安装，请检查 requirements.txt 文件")
     ULTRALYTICS_AVAILABLE = False
 
+# matplotlib
+try:
+    import matplotlib.pyplot as plt
 
+    MATPLOTLIB_AVAILABLE = True
+except ImportError:
+    st.error("matplotlib 库未安装，请检查 requirements.txt 文件")
+    MATPLOTLIB_AVAILABLE = False
 
 # numpy
 try:
