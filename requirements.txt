@@ -1,8 +1,8 @@
+# 清华源（加速）
 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 稳定兼容核心库
-streamlit==1.32.2
-ultralytics==8.3.0
-Pillow==10.4.0
-numpy==1.26.4
-matplotlib==3.8.4
+# 仅保留核心依赖（无任何会卡死的编译包）
+streamlit
+ultralytics
+Pillow
+numpy
